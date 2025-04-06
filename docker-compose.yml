@@ -1,0 +1,29 @@
+version: "3"
+
+services:
+  apiserver:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: apiserver
+    ports:
+      - "5000:5000"
+    networks:
+      - backend
+
+  node1:
+    build:
+      context: .
+      dockerfile: Dockerfile.node
+    container_name: node1
+    environment:
+      - NODE_ID=node1
+      - CPU_CORES=2
+    networks:
+      - backend
+    depends_on:
+      - apiserver
+
+networks:
+  backend:
+
