@@ -1,0 +1,12 @@
+# Dockerfile.node
+FROM python:3.10
+
+WORKDIR /app
+
+COPY node.py .
+COPY requirements.txt .
+
+RUN pip install -r requirements.txt
+
+CMD ["python3", "node.py"]
+
