@@ -1,0 +1,64 @@
+# docker-compose.yml
+version: '3'
+
+services:
+  api_server:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
+    ports:
+      - "5000:5000"
+    environment:
+      - DOCKER_NETWORK=cluster_network
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - cluster_network
+
+  web_interface:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.web
+    ports:
+      - "8080:8080"
+    environment:
+      - API_SERVER=http://api_server:5000
+    depends_on:
+      - api_server
+    networks:
+      - cluster_network
+
+  # Initial nodes can be defined here  
+  # node1:
+  #   build:
+  #     context: .
+  #     dockerfile: docker/Dockerfile.node
+  #   image: node-image
+  #   environment:
+  #     - NODE_ID=node-initial-1
+  #     - CPU_CORES=2
+  #     - API_SERVER=http://api_server:5000
+  #   depends_on:
+  #     - api_server
+  #   networks:
+  #     - cluster_network
+  #   restart: unless-stopped  # Add automatic restart policy
+
+  # node2:
+  #   build:
+  #     context: .
+  #     dockerfile: docker/Dockerfile.node
+  #   image: node-image
+  #   environment:
+  #     - NODE_ID=node-initial-2
+  #     - CPU_CORES=4
+  #     - API_SERVER=http://api_server:5000
+  #   depends_on:
+  #     - api_server
+  #   networks:
+  #     - cluster_network
+  #   restart: unless-stopped
+
+networks:
+  cluster_network:
+    driver: bridge

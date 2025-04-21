@@ -2,9 +2,10 @@ import docker
 import uuid
 import requests
 
-API_SERVER_URL = "http://localhost:5000/register_node"
-DOCKER_NETWORK = "cc_p2_backend"
-IMAGE_NAME = "node-image"
+# This URL must match the service name from docker-compose!
+API_SERVER_URL = "http://apiserver:5000/register_node"
+DOCKER_NETWORK = "backend"  # Match your docker-compose.yml network name
+IMAGE_NAME = "node1:latest"  # Match the image name from docker-compose.yml
 
 def main():
     try:
@@ -23,7 +24,8 @@ def main():
             detach=True,
             environment={
                 "NODE_ID": node_id,
-                "CPU_CORES": cpu_cores
+                "CPU_CORES": cpu_cores,
+                "API_SERVER": API_SERVER_URL
             },
             network=DOCKER_NETWORK,
             restart_policy={"Name": "on-failure"},
@@ -33,7 +35,7 @@ def main():
         # Register the node with the API server
         response = requests.post(API_SERVER_URL, json={
             "node_id": node_id,
-            "cpu_cores": cpu_cores
+            "cpu_cores": int(cpu_cores)
         })
 
         if response.status_code == 200:
@@ -41,9 +43,12 @@ def main():
         else:
             print(f"❌ Failed to register node: {response.text}")
 
+    except docker.errors.APIError as e:
+        print(f"❌ Docker error: {str(e)}")
+    except requests.exceptions.RequestException as e:
+        print(f"❌ Failed to reach API server: {str(e)}")
     except Exception as e:
-        print(f"❌ Error: {str(e)}")
+        print(f"❌ Unexpected error: {str(e)}")
 
 if __name__ == "__main__":
     main()
-

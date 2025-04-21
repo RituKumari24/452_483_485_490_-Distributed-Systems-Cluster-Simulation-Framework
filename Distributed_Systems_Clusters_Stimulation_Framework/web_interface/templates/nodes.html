@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nodes Management - Cluster Simulation</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/">Cluster Simulation</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/">Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/nodes">Nodes</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/pods">Pods</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>Nodes Management</h1>
+            <a href="/nodes/add" class="btn btn-primary">Add Node</a>
+        </div>
+
+        <!-- Flash messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        {% for category, message in messages %}
+        <div class="alert alert-{{ category }}">{{ message }}</div>
+        {% endfor %}
+        {% endif %}
+        {% endwith %}
+
+        <!-- Status alert for AJAX operations -->
+        <div id="status-alert" class="alert d-none"></div>
+
+        <!-- Nodes table -->
+        <div class="card">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Node ID</th>
+                                <th>Status</th>
+                                <th>CPU Cores</th>
+                                <th>Available Cores</th>
+                                <th>Pods</th>
+                                <th>Last Heartbeat</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if nodes %}
+                            {% for node_id, node_info in nodes.items() %}
+                            <tr id="node-row-{{ node_id }}">
+                                <td>{{ node_id }}</td>
+                                <td>
+                                    {% if node_info.status == 'healthy' %}
+                                    <span class="badge bg-success">Healthy</span>
+                                    {% elif node_info.status == 'failed' %}
+                                    <span class="badge bg-danger">Failed</span>
+                                    {% else %}
+                                    <span class="badge bg-warning">{{ node_info.status }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ node_info.cpu_cores }}</td>
+                                <td>{{ node_info.available_cores }}</td>
+                                <td>{{ node_info.pods|length }}</td>
+                                <td>{{ (node_info.last_heartbeat|int)|timestamp_to_time }}</td>
+                                <td>
+                                    <button type="button" class="btn btn-sm btn-danger"
+                                        onclick="removeNode('{{ node_id }}')">Remove</button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                            {% else %}
+                            <tr>
+                                <td colspan="7" class="text-center">No nodes found</td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showAlert(message, type) {
+            const alertElement = document.getElementById('status-alert');
+            alertElement.className = `alert alert-${type}`;
+            alertElement.textContent = message;
+            alertElement.classList.remove('d-none');
+
+            // Auto-hide after 5 seconds
+            setTimeout(() => {
+                alertElement.classList.add('d-none');
+            }, 5000);
+        }
+
+        function removeNode(nodeId) {
+            if (confirm("Are you sure you want to remove this node?")) {
+                // Show loading state
+                const rowElement = document.getElementById(`node-row-${nodeId}`);
+                if (rowElement) {
+                    rowElement.classList.add('table-secondary');
+                }
+
+                // Make the API request
+                fetch("/api/nodes/remove", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ node_id: nodeId })
+                })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! Status: ${response.status}`);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data.message) {
+                            // Success case
+                            showAlert(data.message, "success");
+
+                            // Remove the row from the table
+                            if (rowElement) {
+                                rowElement.remove();
+                            }
+
+                            // If no nodes left, add the "No nodes found" row
+                            const tbody = document.querySelector('tbody');
+                            if (tbody.children.length === 0) {
+                                const noNodesRow = document.createElement('tr');
+                                noNodesRow.innerHTML = '<td colspan="7" class="text-center">No nodes found</td>';
+                                tbody.appendChild(noNodesRow);
+                            }
+                        } else if (data.error) {
+                            showAlert(`Error: ${data.error}`, "danger");
+                            if (rowElement) {
+                                rowElement.classList.remove('table-secondary');
+                            }
+                        }
+                    })
+                    .catch(error => {
+                        showAlert(`Error: ${error.message || "Unknown error"}`, "danger");
+                        if (rowElement) {
+                            rowElement.classList.remove('table-secondary');
+                        }
+                    });
+            }
+        }
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+
+</html>

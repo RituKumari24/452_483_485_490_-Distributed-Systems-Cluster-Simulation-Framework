@@ -1,0 +1,51 @@
+# docker/Dockerfile.node
+FROM python:3.10-slim as builder
+
+# Install build dependencies
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends gcc python3-dev && \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Create and activate virtual environment
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Install dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# --- Runtime stage ---
+FROM python:3.10-slim
+
+# Create non-root user
+RUN useradd -m nodeuser && \
+    mkdir -p /app && \
+    chown nodeuser:nodeuser /app
+
+WORKDIR /app
+
+# Copy virtual environment from builder
+COPY --from=builder /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Copy application files
+COPY --chown=nodeuser:nodeuser node/ ./node/
+
+# Environment variables (can be overridden in docker-compose)
+ENV NODE_ID=""
+ENV CPU_CORES="2"
+ENV API_SERVER="http://api_server:5000"
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONPATH="/app"
+
+# Switch to non-root user
+USER nodeuser
+
+# Health check (optional)
+HEALTHCHECK --interval=30s --timeout=3s \
+    CMD python -c "import requests; requests.get('http://localhost:8000/health', timeout=2)" || exit 1
+
+# Run the node
+CMD ["python", "-m", "node.node"]

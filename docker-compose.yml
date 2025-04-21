@@ -1,10 +1,9 @@
-version: "3"
-
 services:
   apiserver:
     build:
       context: .
       dockerfile: Dockerfile.api
+    image: apiserver:latest  # ✅ NOT inside build
     container_name: apiserver
     ports:
       - "5000:5000"
@@ -15,10 +14,12 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.node
+    image: node1:latest       # ✅ Same fix here
     container_name: node1
     environment:
       - NODE_ID=node1
       - CPU_CORES=2
+      - API_SERVER=http://apiserver:5000
     networks:
       - backend
     depends_on:
@@ -26,4 +27,3 @@ services:
 
 networks:
   backend:
-

@@ -3,7 +3,7 @@ import time
 import os
 
 NODE_ID = os.getenv("NODE_ID", "default_node")
-CPU_CORES = os.getenv("CPU_CORES", 2)
+CPU_CORES = int(os.getenv("CPU_CORES", "2"))
 API_SERVER = "http://apiserver:5000"
 
 # Register the node first
