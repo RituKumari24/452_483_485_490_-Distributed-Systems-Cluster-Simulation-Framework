@@ -19,13 +19,13 @@ def timestamp_to_time(timestamp):
     dt = datetime.datetime.fromtimestamp(timestamp)
     return dt.strftime('%H:%M:%S')
 
-# Initialize components
+# Initializing components
 node_manager = NodeManager()
 pod_scheduler = PodScheduler(node_manager)
 health_monitor = HealthMonitor(node_manager)
 resource_monitor = ResourceMonitor(node_manager)
 
-# Connect the pod scheduler to the health monitor
+# Connectting the pod scheduler to the health monitor
 health_monitor.set_pod_scheduler(pod_scheduler)
 
 # Start background monitoring threads
