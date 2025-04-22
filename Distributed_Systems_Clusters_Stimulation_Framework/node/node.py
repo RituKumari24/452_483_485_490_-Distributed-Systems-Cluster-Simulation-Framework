@@ -57,27 +57,42 @@ class Node:
         """Poll the API server for pod assignments"""
         while self.running:
             try:
+                # Get node information
                 response = requests.get(f"{API_SERVER}/api/nodes", timeout=5)
                 if response.status_code == 200:
                     nodes = response.json().get("nodes", {})
                     if NODE_ID in nodes:
                         node_info = nodes[NODE_ID]
-                        self.pods = node_info.get("pods", [])
+                        assigned_pod_ids = node_info.get("pods", [])
                         
-                        # For each pod, if we don't have resource info, generate it
-                        for pod_id in self.pods:
-                            if pod_id not in self.pod_resources:
-                                response = requests.get(f"{API_SERVER}/api/pods", timeout=5)
-                                if response.status_code == 200:
-                                    all_pods = response.json().get("pods", {})
-                                    if pod_id in all_pods:
-                                        self.pod_resources[pod_id] = all_pods[pod_id].get("cpu_cores", 1)
-                                    else:
-                                        # Default to 1 core if not found
-                                        self.pod_resources[pod_id] = 1
-                        
-                        logger.info(f"Updated pod assignments: {self.pods}")
-                        logger.info(f"Pod resources: {self.pod_resources}")
+                        # Get detailed pod information
+                        response = requests.get(f"{API_SERVER}/api/pods", timeout=5)
+                        if response.status_code == 200:
+                            all_pods = response.json().get("pods", {})
+                            
+                            # Update our local pod tracking with comprehensive info
+                            updated_pods = {}
+                            for pod_id in assigned_pod_ids:
+                                if pod_id in all_pods:
+                                    # Store complete pod info
+                                    updated_pods[pod_id] = {
+                                        "node_id": NODE_ID,
+                                        "cpu_cores": all_pods[pod_id].get("cpu_cores", 1),
+                                        "status": "running"
+                                    }
+                                else:
+                                    # Fallback with basic info
+                                    updated_pods[pod_id] = {
+                                        "node_id": NODE_ID,
+                                        "cpu_cores": self.pod_resources.get(pod_id, 1),
+                                        "status": "running"
+                                    }
+                            
+                            # Update the pod list
+                            self.pods = updated_pods
+                            
+                            logger.info(f"Updated pod assignments: {self.pods}")
+                
             except Exception as e:
                 logger.error(f"Error polling for pods: {str(e)}")
             

@@ -10,7 +10,7 @@ class PodScheduler:
         self.node_manager = node_manager
         self.pods = {}  # pod_id -> {node_id, cpu_cores}
         self.lock = Lock()  # For thread safety
-        self.scheduling_algorithm = "first-fit"  # Default algorithm
+        self.scheduling_algorithm = "best-fit"  # Default algorithm
     
     def set_scheduling_algorithm(self, algorithm):
         """Set the scheduling algorithm to use"""
@@ -144,8 +144,8 @@ class PodScheduler:
             for pod_id, info in list(self.pods.items()):
                 if info["node_id"] == node_id:
                     pods_to_reschedule.append((pod_id, info["cpu_cores"]))
-                    # Remove from internal tracking
-                    del self.pods[pod_id]
+                    # Don't delete from internal tracking yet!
+                    # Keep this line commented: del self.pods[pod_id]
             
             logger.info(f"Found {len(pods_to_reschedule)} pods to reschedule from node {node_id}")
             
@@ -155,6 +155,11 @@ class PodScheduler:
             
             for pod_id, cpu_cores in pods_to_reschedule:
                 logger.info(f"Attempting to reschedule pod {pod_id} with {cpu_cores} CPU cores")
+                
+                # First update the pod's status to show it's being rescheduled
+                if pod_id in self.pods:
+                    self.pods[pod_id]["status"] = "rescheduling"
+                
                 # Remove the actual pod from the node before rescheduling
                 self.node_manager.remove_pod_from_node(node_id, pod_id)
                 
@@ -166,6 +171,9 @@ class PodScheduler:
                     logger.info(f"Successfully rescheduled pod {pod_id} to node {new_node}")
                     rescheduled.append(pod_id)
                 else:
+                    # If rescheduling failed, now we can delete it from tracking
+                    if pod_id in self.pods:
+                        del self.pods[pod_id]
                     logger.warning(f"Failed to reschedule pod {pod_id}: {result['message']}")
                     failed.append(pod_id)
             
