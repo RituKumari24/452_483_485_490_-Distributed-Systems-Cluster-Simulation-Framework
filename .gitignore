@@ -1,2 +1,19 @@
+# Ignore Python bytecode and cache
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Ignore virtual environments
 .venv/
-.venv
+venv/
+
+# Ignore environment config
+.env
+*.env
+
+# Ignore VS Code settings
+.vscode/
+
+# Ignore macOS and Linux metadata
+.DS_Store
+*.swp
